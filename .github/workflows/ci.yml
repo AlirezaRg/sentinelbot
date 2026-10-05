@@ -120,21 +120,21 @@ jobs:
       - name: Build frontend image
         run: docker build -f docker/frontend.Dockerfile -t sentinelbot-frontend:ci .
       - name: Scan API image for known vulnerabilities
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           image-ref: sentinelbot-api:ci
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: "1"
       - name: Scan agent image
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           image-ref: sentinelbot-agent:ci
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: "1"
       - name: Scan frontend image
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           image-ref: sentinelbot-frontend:ci
           severity: CRITICAL,HIGH
@@ -160,3 +160,4 @@ jobs:
       - name: Audit npm dependencies
         working-directory: frontend
         run: npm audit --omit=dev --audit-level=high
+
