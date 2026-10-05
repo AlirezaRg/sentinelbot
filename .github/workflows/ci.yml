@@ -21,7 +21,7 @@ jobs:
       matrix:
         package: [agent, detection, database, alerts, ai, backend]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -67,7 +67,7 @@ jobs:
       SENTINEL_TEST_DATABASE_URL: postgresql+psycopg://sentinel:ci-only-password@127.0.0.1:5432/sentinel_test
       SENTINEL_TEST_REDIS_URL: redis://127.0.0.1:6379/15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -97,7 +97,7 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -112,7 +112,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [python-checks, integration, frontend]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build API image
         run: docker build -f docker/api.Dockerfile -t sentinelbot-api:ci .
       - name: Build agent image
@@ -145,7 +145,7 @@ jobs:
     name: Dependency audit (pip-audit and npm audit)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
