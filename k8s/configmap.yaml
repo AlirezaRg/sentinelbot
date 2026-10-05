@@ -1,0 +1,14 @@
+# Non-secret settings shared by the services. Secrets live in secret.yaml (see secret.example.yaml).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sentinelbot-config
+  namespace: sentinelbot
+data:
+  SENTINEL_REDIS_URL: redis://redis:6379/0
+  SENTINEL_BASELINE_PATH: /var/lib/sentinelbot/baseline.json
+  SENTINEL_ALLOWED_PORTS: "22,80,443,3000,3001,5432,6379,8000,9090"
+  SENTINEL_AI_PROVIDER: rules
+  SENTINEL_API_URL: http://sentinel-api:8000
+  SENTINEL_COLLECTORS: system,processes,network,auth
+  SENTINEL_STATE_PATH: /var/lib/sentinelbot/agent-state.json

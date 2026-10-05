@@ -1,0 +1,84 @@
+# Agent on every node. It reads the node's journal (SSH and sudo entries) and reports host
+# telemetry to the API. Needs host access, so keep it on nodes you control.
+#
+# Before applying, set JOURNAL_GID to the node's systemd-journal group id:
+#   getent group systemd-journal | cut -d: -f3
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: sentinel-agent
+  namespace: sentinelbot
+spec:
+  selector:
+    matchLabels:
+      app: sentinel-agent
+  template:
+    metadata:
+      labels:
+        app: sentinel-agent
+    spec:
+      hostPID: true
+      tolerations:
+        - operator: Exists  # run on control-plane nodes too
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        supplementalGroups: [101]  # JOURNAL_GID: replace 101 with the node's value
+      containers:
+        - name: agent
+          image: sentinelbot-agent:local
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: sentinelbot-config
+          env:
+            - name: SENTINEL_HOST_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: SENTINEL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sentinelbot-secrets
+                  key: SENTINEL_API_KEY
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+          resources:
+            requests: {cpu: 50m, memory: 96Mi}
+            limits: {memory: 256Mi}
+          volumeMounts:
+            - name: journal
+              mountPath: /var/log/journal
+              readOnly: true
+            - name: run-journal
+              mountPath: /run/log/journal
+              readOnly: true
+            - name: machine-id
+              mountPath: /etc/machine-id
+              readOnly: true
+            - name: state
+              mountPath: /var/lib/sentinelbot
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: journal
+          hostPath:
+            path: /var/log/journal
+            type: DirectoryOrCreate
+        - name: run-journal
+          hostPath:
+            path: /run/log/journal
+            type: DirectoryOrCreate
+        - name: machine-id
+          hostPath:
+            path: /etc/machine-id
+            type: File
+        - name: state
+          hostPath:
+            path: /var/lib/sentinelbot-agent
+            type: DirectoryOrCreate
+        - name: tmp
+          emptyDir: {}

@@ -1,0 +1,16 @@
+# Prometheus configuration for the Docker Compose stack (services reach each other by name).
+# The API key is mounted from ./secrets/sentinel_api_key; see .env.example for how to create it.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: sentinelbot-api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["sentinel-api:8000"]
+    http_headers:
+      X-API-Key:
+        files:
+          - /etc/prometheus/sentinel_api_key

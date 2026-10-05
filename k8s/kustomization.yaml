@@ -1,0 +1,19 @@
+# Applies everything except secret.yaml (create that from secret.example.yaml first).
+#   kubectl apply -f k8s/secret.yaml
+#   kubectl apply -k k8s/
+#
+# The Grafana dashboard ConfigMap is created from monitoring/ (see k8s/README.md).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: sentinelbot
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - postgres/postgres.yaml
+  - redis/redis.yaml
+  - api/api.yaml
+  - frontend/frontend.yaml
+  - prometheus/prometheus.yaml
+  - grafana/grafana.yaml
+  - grafana/dashboards-provider.yaml
+  - agent/daemonset.yaml

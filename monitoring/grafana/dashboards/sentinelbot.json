@@ -1,0 +1,137 @@
+{
+  "uid": "sentinelbot-overview",
+  "title": "SentinelBot Overview",
+  "tags": ["sentinelbot", "security"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {"from": "now-6h", "to": "now"},
+  "editable": false,
+  "panels": [
+    {
+      "id": 1, "type": "row", "title": "Host (agent)", "collapsed": false,
+      "gridPos": {"x": 0, "y": 0, "w": 24, "h": 1}
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "CPU usage (%)",
+      "gridPos": {"x": 0, "y": 1, "w": 6, "h": 7},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sentinel_agent_cpu_usage", "legendFormat": "{{host}}"}],
+      "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100}, "overrides": []}
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "Memory usage (%)",
+      "gridPos": {"x": 6, "y": 1, "w": 6, "h": 7},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sentinel_agent_memory_usage", "legendFormat": "{{host}}"}],
+      "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100}, "overrides": []}
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "Active connections",
+      "gridPos": {"x": 12, "y": 1, "w": 6, "h": 7},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sentinel_active_connections", "legendFormat": "{{host}}"}],
+      "fieldConfig": {"defaults": {}, "overrides": []}
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "Running processes",
+      "gridPos": {"x": 18, "y": 1, "w": 6, "h": 7},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sentinel_running_processes", "legendFormat": "{{host}}"}],
+      "fieldConfig": {"defaults": {}, "overrides": []}
+    },
+    {
+      "id": 10, "type": "row", "title": "Security", "collapsed": false,
+      "gridPos": {"x": 0, "y": 8, "w": 24, "h": 1}
+    },
+    {
+      "id": 11, "type": "bargauge", "title": "Events by severity (last hour)",
+      "gridPos": {"x": 0, "y": 9, "w": 8, "h": 7},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum by (severity) (increase(sentinel_events_total[1h]))", "legendFormat": "{{severity}}"}],
+      "fieldConfig": {"defaults": {"min": 0}, "overrides": []}
+    },
+    {
+      "id": 12, "type": "timeseries", "title": "Events over time, by type",
+      "gridPos": {"x": 8, "y": 9, "w": 16, "h": 7},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum by (event_type) (rate(sentinel_events_total[5m]))", "legendFormat": "{{event_type}}"}],
+      "fieldConfig": {"defaults": {"unit": "ops"}, "overrides": []}
+    },
+    {
+      "id": 13, "type": "stat", "title": "Failed SSH logins (last hour)",
+      "gridPos": {"x": 0, "y": 16, "w": 6, "h": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum(increase(sentinel_events_total{event_type=\"ssh_login_failed\"}[1h]))"}],
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 10}, {"color": "red", "value": 50}]}}, "overrides": []}
+    },
+    {
+      "id": 14, "type": "stat", "title": "Direct root SSH logins (last 24h)",
+      "gridPos": {"x": 6, "y": 16, "w": 6, "h": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum(increase(sentinel_events_total{event_type=\"ssh_root_login\"}[24h]))"}],
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}, "overrides": []}
+    },
+    {
+      "id": 15, "type": "timeseries", "title": "Detections by rule (last hour)",
+      "gridPos": {"x": 12, "y": 16, "w": 12, "h": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum by (rule_id) (increase(sentinel_detection_events_total[1h]))", "legendFormat": "{{rule_id}}"}],
+      "fieldConfig": {"defaults": {}, "overrides": []}
+    },
+    {
+      "id": 16, "type": "timeseries", "title": "Detection latency p95 (seconds)",
+      "gridPos": {"x": 0, "y": 20, "w": 12, "h": 6},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "histogram_quantile(0.95, sum by (le) (rate(sentinel_detection_latency_seconds_bucket[5m])))", "legendFormat": "p95"}],
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []}
+    },
+    {
+      "id": 17, "type": "timeseries", "title": "Alert deliveries (filled in Phase 11)",
+      "gridPos": {"x": 12, "y": 20, "w": 12, "h": 6},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum by (channel, status) (rate(sentinel_alerts_total[5m]))", "legendFormat": "{{channel}} {{status}}"}],
+      "fieldConfig": {"defaults": {"unit": "ops"}, "overrides": []}
+    },
+    {
+      "id": 20, "type": "row", "title": "Incidents", "collapsed": false,
+      "gridPos": {"x": 0, "y": 26, "w": 24, "h": 1}
+    },
+    {
+      "id": 21, "type": "stat", "title": "Open incidents",
+      "gridPos": {"x": 0, "y": 27, "w": 6, "h": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum(sentinel_incident_status{status=\"OPEN\"})"}],
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 1}, {"color": "red", "value": 5}]}}, "overrides": []}
+    },
+    {
+      "id": 22, "type": "stat", "title": "Being investigated",
+      "gridPos": {"x": 6, "y": 27, "w": 6, "h": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum(sentinel_incident_status{status=\"INVESTIGATING\"})"}],
+      "fieldConfig": {"defaults": {}, "overrides": []}
+    },
+    {
+      "id": 23, "type": "stat", "title": "Critical incidents (last 24h)",
+      "gridPos": {"x": 12, "y": 27, "w": 6, "h": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum(increase(sentinel_incidents_total{severity=\"critical\"}[24h]))"}],
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}, "overrides": []}
+    },
+    {
+      "id": 24, "type": "piechart", "title": "Incidents by status",
+      "gridPos": {"x": 18, "y": 27, "w": 6, "h": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sentinel_incident_status", "legendFormat": "{{status}}", "instant": true}],
+      "fieldConfig": {"defaults": {}, "overrides": []}
+    },
+    {
+      "id": 25, "type": "timeseries", "title": "Incidents created, by severity",
+      "gridPos": {"x": 0, "y": 31, "w": 24, "h": 7},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum by (severity) (increase(sentinel_incidents_total[1h]))", "legendFormat": "{{severity}}"}],
+      "fieldConfig": {"defaults": {}, "overrides": []}
+    }
+  ]
+}

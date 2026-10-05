@@ -1,0 +1,20 @@
+# Prometheus scrape configuration for the SentinelBot API.
+#
+# The API key is read from a file (not written here). Create it with:
+#   sudo install -m 600 /dev/null /etc/prometheus/sentinel_api_key
+#   sudo sh -c 'printf %s "$SENTINEL_API_KEY" > /etc/prometheus/sentinel_api_key'
+# Requires Prometheus 2.44 or newer for the "files" form of http_headers.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: sentinelbot-api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["127.0.0.1:8000"]
+    http_headers:
+      X-API-Key:
+        files:
+          - /etc/prometheus/sentinel_api_key

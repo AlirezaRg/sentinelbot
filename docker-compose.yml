@@ -1,0 +1,175 @@
+# SentinelBot stack. Copy .env.example to .env and fill it in first (see the README).
+#   docker compose up -d --build
+#   docker compose ps          # every service should reach "healthy"
+#
+# Only the dashboard (3001) and Grafana (3000) are published. The API, Postgres and Redis stay
+# on the internal network. Prometheus is published on loopback only.
+
+name: sentinelbot
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sentinel
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentinel -d sentinel"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [sentinel]
+    logging: *logging
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [sentinel]
+    logging: *logging
+
+  sentinel-api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    image: sentinelbot-api:local
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SENTINEL_DATABASE_URL: postgresql+psycopg://sentinel:${POSTGRES_PASSWORD}@postgres:5432/sentinel
+      SENTINEL_REDIS_URL: redis://redis:6379/0
+      SENTINEL_API_KEY: ${SENTINEL_API_KEY:?set SENTINEL_API_KEY in .env}
+      SENTINEL_AUTH_SECRET: ${SENTINEL_AUTH_SECRET:?set SENTINEL_AUTH_SECRET in .env}
+      SENTINEL_AI_PROVIDER: ${SENTINEL_AI_PROVIDER:-rules}
+      SENTINEL_AI_API_KEY: ${SENTINEL_AI_API_KEY:-}
+      SENTINEL_SMTP_HOST: ${SENTINEL_SMTP_HOST:-}
+      SENTINEL_SMTP_PORT: ${SENTINEL_SMTP_PORT:-587}
+      SENTINEL_SMTP_USERNAME: ${SENTINEL_SMTP_USERNAME:-}
+      SENTINEL_SMTP_PASSWORD: ${SENTINEL_SMTP_PASSWORD:-}
+      SENTINEL_SMTP_FROM: ${SENTINEL_SMTP_FROM:-}
+      SENTINEL_ALERT_RECIPIENTS: ${SENTINEL_ALERT_RECIPIENTS:-}
+      SENTINEL_BASELINE_PATH: /var/lib/sentinelbot/baseline.json
+      SENTINEL_ALLOWED_PORTS: ${SENTINEL_ALLOWED_PORTS:-}
+    volumes:
+      - apistate:/var/lib/sentinelbot
+    ports:
+      # Loopback only: lets the host-side pipeline and tools reach the API, nothing else.
+      - "127.0.0.1:8000:8000"
+    networks: [sentinel]
+    logging: *logging
+
+  sentinel-agent:
+    build:
+      context: .
+      dockerfile: docker/agent.Dockerfile
+    image: sentinelbot-agent:local
+    restart: unless-stopped
+    # Host PID namespace: process and socket telemetry describe the host, not this container.
+    pid: host
+    # Read-only access to the host's journal (sshd and sudo entries). The group id must be the
+    # host's systemd-journal group: `getent group systemd-journal | cut -d: -f3` (see .env.example).
+    group_add:
+      - "${SENTINEL_JOURNAL_GID:?set SENTINEL_JOURNAL_GID in .env}"
+    volumes:
+      - /var/log/journal:/var/log/journal:ro
+      - /run/log/journal:/run/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
+      - agentstate:/var/lib/sentinelbot
+    depends_on:
+      sentinel-api:
+        condition: service_healthy
+    environment:
+      SENTINEL_API_URL: http://sentinel-api:8000
+      SENTINEL_API_KEY: ${SENTINEL_API_KEY:?set SENTINEL_API_KEY in .env}
+      SENTINEL_HOST_ID: ${SENTINEL_HOST_ID:-sentinel-host}
+      SENTINEL_INTERVAL_SECONDS: ${SENTINEL_INTERVAL_SECONDS:-60}
+      SENTINEL_COLLECTORS: ${SENTINEL_COLLECTORS:-system,processes,network,auth}
+      SENTINEL_STATE_PATH: /var/lib/sentinelbot/agent-state.json
+    networks: [sentinel]
+    logging: *logging
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+      args:
+        SENTINEL_API_URL: http://sentinel-api:8000
+    image: sentinelbot-frontend:local
+    restart: unless-stopped
+    depends_on:
+      sentinel-api:
+        condition: service_healthy
+    ports:
+      - "3001:3000"
+    networks: [sentinel]
+    logging: *logging
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=15d"
+    volumes:
+      - ./monitoring/prometheus/prometheus.docker.yml:/etc/prometheus/prometheus.yml:ro
+      - ./secrets/sentinel_api_key:/etc/prometheus/sentinel_api_key:ro
+      - promdata:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    depends_on:
+      sentinel-api:
+        condition: service_healthy
+    networks: [sentinel]
+    logging: *logging
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks: [sentinel]
+    logging: *logging
+
+networks:
+  sentinel:
+    driver: bridge
+
+volumes:
+  apistate:
+  agentstate:
+  pgdata:
+  redisdata:
+  promdata:
+  grafanadata:

@@ -1,0 +1,9 @@
+Oct  4 09:00:01 server-01 sshd[1201]: Failed password for root from 203.0.113.50 port 51514 ssh2
+Oct  4 09:00:02 server-01 sshd[1202]: Failed password for invalid user admin from 203.0.113.50 port 51515 ssh2
+Oct  4 09:00:02 server-01 sshd[1202]: Invalid user admin from 203.0.113.50 port 51515
+Oct  4 09:00:05 server-01 sshd[1210]: Accepted publickey for alice from 198.51.100.7 port 40022 ssh2: ED25519 SHA256:synthetic
+Oct  4 09:00:09 server-01 sshd[1220]: Accepted password for root from 198.51.100.8 port 40023 ssh2
+Oct  4 09:01:00 server-01 sudo:    alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Oct  4 09:01:30 server-01 systemd[1]: Started session-3.scope.
+Oct  4 09:02:00 server-01 cron[300]: pam_unix(cron:session): session opened for user root(uid=0)
+Oct  4 09:03:00 server-01 sshd[1230]: Failed publickey for bob from 2001:db8::25 port 22000 ssh2

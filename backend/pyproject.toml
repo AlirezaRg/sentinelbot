@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sentinelbot-backend"
+version = "0.1.0"
+description = "SentinelBot FastAPI backend: event ingestion, incidents and query API (Phase 6)"
+requires-python = ">=3.12"
+dependencies = [
+    "sentinelbot-detection>=0.1.0",
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "prometheus-client>=0.20",
+    "sentinelbot-ai>=0.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "httpx>=0.27",
+    "fakeredis>=2.20",
+    "ruff>=0.5",
+    "mypy>=1.10",
+]
+
+[project.scripts]
+sentinelbot-api = "sentinelbot_backend.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+# FastAPI's dependency injection relies on Depends() in parameter defaults.
+ignore = ["B008"]
+
+[tool.mypy]
+strict = true
+files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+module = ["fastapi.*", "starlette.*", "uvicorn.*"]
+ignore_missing_imports = true

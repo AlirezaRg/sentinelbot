@@ -1,0 +1,114 @@
+# API: runs database migrations in an init container, then serves on 8000 with probes.
+# Only in-cluster traffic reaches it (ClusterIP). Expose the dashboard, not the API.
+apiVersion: v1
+kind: Service
+metadata:
+  name: sentinel-api
+  namespace: sentinelbot
+spec:
+  selector:
+    app: sentinel-api
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sentinel-api-state
+  namespace: sentinelbot
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 100Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sentinel-api
+  namespace: sentinelbot
+spec:
+  replicas: 1  # Keep at 1: the in-memory correlation and rate-limit state is per process.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: sentinel-api
+  template:
+    metadata:
+      labels:
+        app: sentinel-api
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      initContainers:
+        - name: migrate
+          image: sentinelbot-api:local
+          imagePullPolicy: IfNotPresent
+          command: ["alembic", "-c", "alembic.ini", "upgrade", "head"]
+          env:
+            - name: SENTINEL_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: sentinelbot-secrets
+                  key: DATABASE_URL
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: ["ALL"]}
+      containers:
+        - name: api
+          image: sentinelbot-api:local
+          imagePullPolicy: IfNotPresent
+          command: ["sentinelbot-api", "--host", "0.0.0.0", "--port", "8000"]
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: sentinelbot-config
+          env:
+            - name: SENTINEL_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: sentinelbot-secrets
+                  key: DATABASE_URL
+            - name: SENTINEL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sentinelbot-secrets
+                  key: SENTINEL_API_KEY
+            - name: SENTINEL_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: sentinelbot-secrets
+                  key: SENTINEL_AUTH_SECRET
+          livenessProbe:
+            httpGet: {path: /health, port: 8000}
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet: {path: /health, port: 8000}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 100m, memory: 192Mi}
+            limits: {memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+          volumeMounts:
+            - name: state
+              mountPath: /var/lib/sentinelbot
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: state
+          persistentVolumeClaim:
+            claimName: sentinel-api-state
+        - name: tmp
+          emptyDir: {}
