@@ -128,11 +128,40 @@ Each package reads its own settings. See `config.py` or `settings.py` in each pa
 
 ## Documentation
 
-- [Architecture](docs/architecture.md)
-- [Detection rules](docs/detection-rules.md)
+Setup and operation:
+
 - [Development](docs/development.md)
 - [Deployment](docs/deployment.md)
 - [Security model and known limitations](docs/security.md)
+- [Live demo](docs/live-demo.md)
+
+Design and explanation:
+
+- [Architecture](docs/architecture.md) and [architecture explained](docs/architecture-explained.md)
+- [Detection rules](docs/detection-rules.md)
+- [Risk scoring](docs/risk-scoring-explained.md)
+- [Correlation and incidents](docs/correlation-explained.md)
+- [AI analyst](docs/ai-analyst-explained.md)
+- [Technology decisions](docs/technology-decisions.md)
+- [Simplification report](docs/simplification-report.md)
+
+Evaluation and study material:
+
+- [Laboratory experiments](docs/laboratory-experiments.md)
+- [Evaluation methodology](docs/evaluation.md)
+- [Project audit](docs/project-understanding.md) and [what must be understood](docs/must-understand.md)
+- [Development journey](docs/development-journey.md)
+- [Defense preparation](docs/defense-preparation.md) and [presentation outline](docs/presentation-outline.md)
+
+## Laboratory
+
+Synthetic SSH scenarios run through the real agent, detection and correlation code, with no network access and no real attack:
+
+```powershell
+.lab\venv\Scripts\python.exe scripts\lab\run_scenario.py all --out .lab\runs
+```
+
+See [docs/laboratory-experiments.md](docs/laboratory-experiments.md) for setup, expected results, and the recorded run.
 
 ## Status
 
