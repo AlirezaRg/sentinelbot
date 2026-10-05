@@ -119,12 +119,16 @@ jobs:
         run: docker build -f docker/agent.Dockerfile -t sentinelbot-agent:ci .
       - name: Build frontend image
         run: docker build -f docker/frontend.Dockerfile -t sentinelbot-frontend:ci .
-      - name: Scan the three images with Trivy (fails on fixable CRITICAL or HIGH)
+      - name: Scan API image with Trivy (fails on fixable CRITICAL or HIGH)
         run: |
-          for image in sentinelbot-api:ci sentinelbot-agent:ci sentinelbot-frontend:ci; do
-            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image \
-              --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 ""
-          done
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --image-src docker --scanners vuln --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 sentinelbot-api:ci
+      - name: Scan agent image with Trivy
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --image-src docker --scanners vuln --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 sentinelbot-agent:ci
+      - name: Scan frontend image with Trivy
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --image-src docker --scanners vuln --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 sentinelbot-frontend:ci
+
   dependency-audit:
     name: Dependency audit (pip-audit and npm audit)
     runs-on: ubuntu-latest
