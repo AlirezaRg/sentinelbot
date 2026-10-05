@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from datetime import UTC, datetime, timedelta
 from ipaddress import ip_address
 from pathlib import Path
@@ -13,10 +14,16 @@ from fastapi.testclient import TestClient
 from sentinelbot_agent.models import Event, EventType, Severity
 
 from sentinelbot_backend.app import create_app
+from sentinelbot_backend.auth import issue_token
 from sentinelbot_backend.config import ApiSettings, SettingsError
 
 KEY = "k" * 32
+SECRET = "s" * 40
 AUTH = {"X-API-Key": KEY}
+# Only users can change incident status; the service key cannot (see auth.has_role).
+ANALYST = {
+    "Authorization": f"Bearer {issue_token('analyst', 'analyst', SECRET, 3600, int(time.time()))}"
+}
 T0 = datetime(2026, 10, 4, 12, 0, tzinfo=UTC)
 
 
@@ -72,7 +79,7 @@ def _body(events: list[Event]) -> list[dict[str, Any]]:
 
 @pytest.fixture
 def client() -> TestClient:
-    return TestClient(create_app(ApiSettings(api_key=KEY, event_capacity=1000)))
+    return TestClient(create_app(ApiSettings(api_key=KEY, auth_secret=SECRET, event_capacity=1000)))
 
 
 def test_health_needs_no_key(client: TestClient) -> None:
@@ -238,9 +245,9 @@ def test_resolve_incident_changes_status(client: TestClient) -> None:
     response = client.post(
         f"/api/v1/incidents/{incident_id}/resolve",
         json={"resolution": "FALSE_POSITIVE", "note": "our own test"},
-        headers=AUTH,
+        headers=ANALYST,
     )
-    default = client.post(f"/api/v1/incidents/{incident_id}/resolve", headers=AUTH)
+    default = client.post(f"/api/v1/incidents/{incident_id}/resolve", headers=ANALYST)
 
     assert response.status_code == 200
     assert response.json()["status"] == "FALSE_POSITIVE"
@@ -252,9 +259,9 @@ def test_resolve_rejects_bad_resolution_and_unknown_incident(client: TestClient)
     incident_id = client.get("/api/v1/incidents", headers=AUTH).json()["items"][0]["incident_id"]
 
     bad = client.post(
-        f"/api/v1/incidents/{incident_id}/resolve", json={"resolution": "OPEN"}, headers=AUTH
+        f"/api/v1/incidents/{incident_id}/resolve", json={"resolution": "OPEN"}, headers=ANALYST
     )
-    unknown = client.post("/api/v1/incidents/INC-nope/resolve", headers=AUTH)
+    unknown = client.post("/api/v1/incidents/INC-nope/resolve", headers=ANALYST)
 
     assert bad.status_code == 422
     assert unknown.status_code == 404

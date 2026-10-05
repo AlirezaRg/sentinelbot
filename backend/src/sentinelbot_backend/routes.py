@@ -24,7 +24,12 @@ from sentinelbot_backend.schemas import (
     ResolveRequest,
     SystemStatusOut,
 )
-from sentinelbot_backend.security import get_container, require_analyst, require_viewer
+from sentinelbot_backend.security import (
+    get_container,
+    require_analyst,
+    require_ingest,
+    require_viewer,
+)
 
 logger = logging.getLogger("sentinelbot_backend.api")
 
@@ -114,7 +119,7 @@ def get_event(event_id: UUID, container: Container = Depends(get_container)) -> 
     "/events",
     response_model=IngestResult,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_analyst)],
+    dependencies=[Depends(require_ingest)],
 )
 def ingest_events(
     batch: Annotated[list[Event], Body(min_length=1, max_length=MAX_BATCH)],

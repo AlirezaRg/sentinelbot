@@ -2,7 +2,8 @@
 
 * A user signs in with username and password and presents ``Authorization: Bearer <token>``.
   The role in the token (viewer, analyst, admin) decides what the route allows.
-* The service key ``X-API-Key`` is used by agents and the pipeline. It counts as ``admin``.
+* The service key ``X-API-Key`` is used by agents and the pipeline. It may read data and
+  ingest events, but it cannot change incident status (see ``auth.has_role``).
 * Both paths are rate limited per client before any credential is checked.
 * If neither secret is configured, protected routes refuse everything (fail closed).
 """
@@ -20,7 +21,7 @@ from sentinelbot_backend.container import Container
 
 API_KEY_HEADER = "X-API-Key"
 RATE_WINDOW_SECONDS = 60
-SERVICE_PRINCIPAL = Principal(username="api-key", role="admin")
+SERVICE_PRINCIPAL = Principal(username="api-key", role="service")
 
 
 def get_container(request: Request) -> Container:
@@ -78,6 +79,8 @@ def authenticate(request: Request, container: Container, required_role: str) -> 
             detail="invalid or missing credentials",
             headers={"WWW-Authenticate": "Bearer, ApiKey"},
         )
+    if not has_role(SERVICE_PRINCIPAL, required_role):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="insufficient role")
     return SERVICE_PRINCIPAL
 
 
@@ -91,3 +94,4 @@ def _requires(required_role: str) -> Callable[..., Principal]:
 require_viewer = _requires("viewer")
 require_analyst = _requires("analyst")
 require_admin = _requires("admin")
+require_ingest = _requires("ingest")

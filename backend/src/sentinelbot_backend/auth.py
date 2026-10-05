@@ -105,5 +105,19 @@ def read_token(token: str, secret: str, now: int) -> Principal | None:
         return None
 
 
+SERVICE_ROLE = "service"
+# "ingest" is a permission, not a user role: agents, analysts and admins may send telemetry.
+INGEST_ROLES = frozenset({SERVICE_ROLE, "analyst", "admin"})
+
+
 def has_role(principal: Principal, required: str) -> bool:
+    """Least privilege: the service key may read and ingest, and nothing else.
+
+    A stolen agent key must not be able to change incident status or reach future admin
+    routes, so it is deliberately not ranked as an admin.
+    """
+    if required == "ingest":
+        return principal.role in INGEST_ROLES
+    if principal.role == SERVICE_ROLE:
+        return required == "viewer"
     return ROLE_RANK[principal.role] >= ROLE_RANK[required]

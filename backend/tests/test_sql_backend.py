@@ -7,6 +7,7 @@ Runs on SQLite (always) and on PostgreSQL when SENTINEL_TEST_DATABASE_URL is set
 from __future__ import annotations
 
 import os
+import time
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from ipaddress import ip_address
@@ -20,10 +21,15 @@ from sentinelbot_database.models import Base
 from sentinelbot_database.session import make_engine
 
 from sentinelbot_backend.app import create_app
+from sentinelbot_backend.auth import issue_token
 from sentinelbot_backend.config import ApiSettings
 
 KEY = "k" * 32
+SECRET = "s" * 40
 AUTH = {"X-API-Key": KEY}
+ANALYST = {
+    "Authorization": f"Bearer {issue_token('analyst', 'analyst', SECRET, 3600, int(time.time()))}"
+}
 T0 = datetime(2026, 10, 4, 12, 0, tzinfo=UTC)
 
 
@@ -73,7 +79,9 @@ def database_url(request: pytest.FixtureRequest, tmp_path: Path) -> Iterator[str
 
 def _client(url: str) -> TestClient:
     return TestClient(
-        create_app(ApiSettings(api_key=KEY, database_url=url, auto_create_schema=True))
+        create_app(
+            ApiSettings(api_key=KEY, auth_secret=SECRET, database_url=url, auto_create_schema=True)
+        )
     )
 
 
@@ -122,7 +130,7 @@ def test_resolution_survives_restart(database_url: str) -> None:
     first = _client(database_url)
     first.post("/api/v1/events", json=_body([_detection(0)]), headers=AUTH)
     incident_id = first.get("/api/v1/incidents", headers=AUTH).json()["items"][0]["incident_id"]
-    first.post(f"/api/v1/incidents/{incident_id}/resolve", headers=AUTH)
+    first.post(f"/api/v1/incidents/{incident_id}/resolve", headers=ANALYST)
 
     restarted = _client(database_url)
     incident = restarted.get(f"/api/v1/incidents/{incident_id}", headers=AUTH).json()

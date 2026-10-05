@@ -101,7 +101,11 @@ def _build_scenarios(start: datetime) -> dict[str, Scenario]:
         )
     ]
     scenarios = [
-        Scenario("normal", "Three successful logins by one user. Expect no detections.", normal),
+        Scenario(
+            "normal",
+            "Three successful logins by one user. Expect no detections.",
+            normal,
+        ),
         Scenario(
             "bruteforce",
             "Eight failures from one source. Expect ssh_bruteforce.",
@@ -145,8 +149,14 @@ def run_scenario(scenario: Scenario, out_dir: Path) -> dict[str, object]:
     detections = out_dir / "detections.jsonl"
     store = out_dir / "incidents.json"
 
+    # Drop any SENTINEL_* values from the shell so a real API URL or Redis URL cannot be used.
+    base_env = {
+        key: value
+        for key, value in os.environ.items()
+        if not key.startswith("SENTINEL_")
+    }
     env = {
-        **os.environ,
+        **base_env,
         "SENTINEL_HOST_ID": HOST,
         "SENTINEL_COLLECTORS": "auth",
         "SENTINEL_AUTH_LOG_PATHS": str(auth_log),
@@ -184,12 +194,22 @@ def run_scenario(scenario: Scenario, out_dir: Path) -> dict[str, object]:
 
     event_rows = _read_jsonl(events)
     detection_rows = _read_jsonl(detections)
-    incidents = json.loads(store.read_text(encoding="utf-8"))["incidents"] if store.exists() else []
+    incidents = (
+        json.loads(store.read_text(encoding="utf-8"))["incidents"]
+        if store.exists()
+        else []
+    )
     return {
         "scenario": scenario.name,
         "log_lines": len(scenario.lines),
         "events": len(event_rows),
-        "detections": sorted({row["metadata"]["rule_id"] for row in detection_rows if "rule_id" in row.get("metadata", {})}),
+        "detections": sorted(
+            {
+                row["metadata"]["rule_id"]
+                for row in detection_rows
+                if "rule_id" in row.get("metadata", {})
+            }
+        ),
         "detection_count": len(detection_rows),
         "incidents": [
             {
@@ -209,16 +229,32 @@ def run_scenario(scenario: Scenario, out_dir: Path) -> dict[str, object]:
 def _read_jsonl(path: Path) -> list[dict[str, object]]:
     if not path.exists():
         return []
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+    return [
+        json.loads(line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line
+    ]
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument(
         "scenario",
-        choices=["normal", "bruteforce", "burst", "root", "combined", "campaign", "all"],
+        choices=[
+            "normal",
+            "bruteforce",
+            "burst",
+            "root",
+            "combined",
+            "campaign",
+            "all",
+        ],
     )
-    parser.add_argument("--out", type=Path, default=Path(".lab/runs"), help="output directory")
+    parser.add_argument(
+        "--out", type=Path, default=Path(".lab/runs"), help="output directory"
+    )
     args = parser.parse_args()
 
     # Start 30 minutes in the past so events are not in the future and the correlation gap
@@ -233,7 +269,9 @@ def main() -> int:
         results.append(result)
         print(json.dumps(result, indent=2))
 
-    (args.out / "summary.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
+    (args.out / "summary.json").write_text(
+        json.dumps(results, indent=2), encoding="utf-8"
+    )
     return 0
 
 

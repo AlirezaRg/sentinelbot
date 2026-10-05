@@ -1,86 +1,108 @@
-# Evaluation methodology
+# Evaluation
 
-This document defines how SentinelBot should be evaluated, how each metric is measured, and what has been measured so far. No performance or accuracy result is reported here unless it was measured. Metrics that have not been measured are marked **NOT YET MEASURED**.
+This document defines the evaluation, states which metrics were measured and how, and marks every metric that has not been measured. No number appears here unless a script produced it and the raw output is in `docs/results/`.
 
-## Status at a glance
+## Status
 
-| Metric | Status |
-| --- | --- |
-| Detection rate (recall) on synthetic scenarios | Functional check only: 4 of 4 attack scenarios produced the expected rule. Not a rate over many runs. |
-| False-positive rate on normal activity | Functional check only: 0 detections on the `normal` scenario (3 events). Not a rate. |
-| Detection latency | **NOT YET MEASURED** |
-| Event processing throughput | **NOT YET MEASURED** |
-| CPU consumption (agent, API) | **NOT YET MEASURED** |
-| Memory consumption (agent, API) | **NOT YET MEASURED** |
-| API response time | **NOT YET MEASURED** |
-| Risk score usefulness | **NOT YET MEASURED** (no labeled dataset) |
-| AI explanation quality | **NOT YET MEASURED** |
+| Metric | Status | Source |
+| --- | --- | --- |
+| Rule behaviour on synthetic scenarios | Measured: 6 of 6 scenarios matched their expected output | `docs/results/lab-scenarios-2026-10-05.json` |
+| Detection rate (recall) on a labeled dataset | NOT YET MEASURED (no labeled dataset of sessions yet) | — |
+| False-positive rate on normal sessions | NOT YET MEASURED as a rate; one normal scenario produced 0 detections | `docs/results/lab-scenarios-2026-10-05.json` |
+| False-negative rate | NOT YET MEASURED as a rate; known false-negative cases are listed in `detection-rules.md` | — |
+| Event processing throughput (offline pipeline) | Measured | `docs/results/benchmark-offline-2026-10-05.json` |
+| CPU consumption (offline pipeline) | Measured | same |
+| Memory consumption (offline pipeline) | Measured (peak RSS) | same |
+| Detection latency | NOT YET MEASURED (see method below) | — |
+| API response time | NOT YET MEASURED (needs the running stack) | — |
+| Database impact | NOT YET MEASURED (benchmark does not write to PostgreSQL) | — |
+| Risk score usefulness | NOT YET MEASURED (no analyst labels) | — |
+| AI explanation quality | NOT YET MEASURED | — |
 
-The functional checks are in `docs/laboratory-experiments.md`. They show that the pipeline behaves as designed on six hand-written inputs. They do not show how it behaves on real traffic, so they must not be reported as detection rates.
+## Measured results
 
-## Metric definitions and how to measure them
+### 1. Lab scenarios (functional)
 
-### 1. Detection rate (recall)
+Six synthetic scenarios were run through the real agent, detection and correlation code. Each expected result was written from the rule definitions before the run.
 
-- **Definition:** of the attack instances in a labeled dataset, the fraction that produced the expected detection.
-- **Formula:** `TP / (TP + FN)`, where TP is an attack instance that produced its detection and FN is one that did not.
-- **Dataset needed:** a set of attack sessions, each labeled with the rule it should trigger. The lab can generate them, with the attack parameters varied (number of failures, spacing, number of sources).
-- **Procedure:** generate N sessions with `run_scenario.py`-style functions and different random seeds. Run each through the pipeline. Count sessions with the expected rule in `detections.jsonl`.
-- **Important:** a rate measured on synthetic sessions describes the rules on those sessions. It does not describe real attacks. Say so in any report.
+| Scenario | Expected | Observed |
+| --- | --- | --- |
+| normal (3 successful logins) | No detection | 0 detections, 0 incidents |
+| bruteforce (8 failures from one IP) | 1 `ssh_bruteforce` | 1 detection, risk 40 |
+| burst (35 failures from 35 IPs in 35 s) | 1 `auth_burst` | 1 detection, risk 20 |
+| root (1 root login) | 1 `root_login` | 1 detection, risk 50 |
+| combined (brute force, root login, normal logins from different IPs) | 2 incidents | 2 incidents |
+| campaign (brute force then root login from the same IP) | 1 incident with 2 rules | 1 incident, 2 detections, risk 60 |
 
-### 2. False-positive rate
+This is a functional check on six hand-written inputs. It is not a detection rate.
 
-- **Definition:** of the normal sessions in a labeled dataset, the fraction that produced at least one detection.
-- **Formula:** `FP / (FP + TN)`, where FP is a normal session that produced a detection and TN is one that did not.
-- **Dataset needed:** normal sessions that include realistic patterns that could look like attacks: a user retyping a password, a script that retries a login, many successful logins from one automation account, a backup job that logs in often.
-- **Procedure:** the same as recall, with normal sessions. Count how many produced any detection.
+### 2. Offline pipeline benchmark
 
-### 3. Detection latency
+Method: `scripts/lab/benchmark.py`. Each size was generated with a fixed seed (70% failed logins, 20% successful, 10% root). The agent, detection and correlation stages ran as child processes. Wall time, CPU time (user plus system) and peak resident memory (sampled every 10 ms over the whole process tree) were recorded. Each size was repeated three times; the median is reported. Counts were identical across repeats.
 
-- **Definition:** time from the timestamp of the last event that completes a detection to the moment the detection is written.
-- **Measurement:** the detection event carries the timestamp of the triggering event. Compare it with the wall-clock time when `sentinelbot-detect` writes the output. For the API, use the `sentinel_detection_latency_seconds` histogram on `/metrics`.
-- **Note:** the agent collects on an interval (`SENTINEL_INTERVAL_SECONDS`, default 60). Most of the latency is the collection interval, not detection. Report both.
+Environment: Windows 11, Python 3.12.10, single run, laptop (no other load controlled). Results from another machine will differ.
 
-### 4. Event processing throughput
+| Input lines | Events | Detections | Incidents | Agent wall (s) | Agent CPU (s) | Agent peak RSS (MB) | Detect wall (s) | Detect CPU (s) | Detect peak RSS (MB) | Correlate wall (s) | Correlate CPU (s) | Correlate peak RSS (MB) | Agent events/s |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 100 | 100 | 10 | 10 | 0.208 | 0.156 | 37 | 0.261 | 0.219 | 43 | 0.179 | 0.125 | 30 | 480 |
+| 1,000 | 1,000 | 104 | 101 | 0.238 | 0.188 | 39 | 0.286 | 0.188 | 43 | 0.187 | 0.125 | 30 | 4,196 |
+| 10,000 | 10,000 | 855 | 376 | 0.463 | 0.422 | 56 | 0.479 | 0.391 | 44 | 0.219 | 0.188 | 32 | 21,601 |
+| 50,000 | 50,000 | 4,228 | 1,354 | 2.349 | 2.047 | 57 | 1.259 | 1.188 | 44 | 0.442 | 0.344 | 37 | 21,289 |
 
-- **Definition:** events per second that the detection pipeline processes.
-- **Measurement procedure (to be run):**
-  1. Generate a synthetic auth log with N lines (mix of successful, failed and invalid lines).
-  2. Time `sentinelbot-agent --once` and divide N by the elapsed time. This measures parsing.
-  3. Time `sentinelbot-detect` on the resulting events file. This measures rules, scoring, and output.
-  4. Time `sentinelbot-correlate`. This measures incident grouping.
-- **Caveat:** process startup dominates small N. Use N of at least 100,000 and repeat at least 5 times. Report the median.
-- **Hardware:** record CPU model, core count, RAM and OS for every result.
+How to read these numbers:
 
-### 5. CPU and memory consumption
+- At 100 and 1,000 lines, most of the wall time is process start-up. Use the 10,000 and 50,000 rows for throughput.
+- Agent throughput is about 21,000 lines per second on this machine for the file source. It is not the throughput of the whole system, because the API and database are not in this path.
+- Peak memory is almost constant (about 40 to 60 MB per stage). Memory is bounded by the sliding-window limits and the incident store in this test, not by input size, except for the incident store, which grows with the number of incidents.
 
-- **Definition:** CPU time and peak resident memory of each process during a run.
-- **Measurement procedure (to be run):** on Linux, run each command under `/usr/bin/time -v` and record "User time", "System time" and "Maximum resident set size". On Windows, use `Get-Process` sampled every second, or record peak working set.
-- **Components:** the agent during a collection cycle, `sentinelbot-detect` on a large events file, and the API under load (see item 6).
+### 3. A finding from the benchmark
 
-### 6. API response time
+The file source reads at most 1 MiB per collection cycle (`MAX_FILE_READ_BYTES` in `agent/src/sentinelbot_agent/auth/sources.py`). The first benchmark attempt ran one cycle on a 50,000-line log and read only 10,196 events. The benchmark now runs cycles until the file is consumed, which took several cycles at that size.
 
-- **Definition:** time from request to response for the dashboard's main endpoints.
-- **Endpoints:** `GET /api/v1/incidents`, `GET /api/v1/events`, `POST /api/v1/events` with a batch of 200.
-- **Measurement procedure (to be run):** send 200 requests per endpoint with a fixed concurrency (for example 4 workers) using a load tool such as `hey` or a small Python script with `httpx`. Record p50, p95 and p99 latency, and the error rate.
-- **Setup:** PostgreSQL with at least 100,000 events loaded, so the numbers reflect realistic table sizes. Record the dataset size with the results.
+Consequence: under a backlog, the agent sends events at the rate of one chunk per collection interval. At the default interval of 60 seconds, a backlog of about 10 MB would take about 10 minutes to drain, so alert latency grows with backlog size. This is a real limitation and is listed in `docs/limitations.md`. It is also the reason detection latency must be measured separately, not inferred from throughput.
 
-### 7. Risk score usefulness
+## Methods for the metrics not yet measured
 
-- **Definition:** whether a higher score corresponds to a more serious incident, as judged by an analyst.
-- **Measurement procedure (to be run):** label a set of incidents with an analyst severity (for example 1 to 5). Compute the rank correlation (Spearman) between the risk score and the label.
-- **Caveat:** requires a labeled set and a judge. Without these, the score is a heuristic and must be described as one.
+### Detection rate and false-positive rate on a labeled set
 
-### 8. AI explanation quality
+1. Write a generator with a seed parameter for each attack type (brute force with 5 to 200 attempts, spacing from 1 s to 10 min, 1 to 50 sources) and for normal sessions (automation logins, mistyped passwords, a monitoring tool that logs in often).
+2. Label each session with the rule it should trigger, or "none".
+3. Run each session through the pipeline with a fresh state directory.
+4. Recall = detected attack sessions / attack sessions. False-positive rate = normal sessions with any detection / normal sessions.
+5. Report counts with the seed range and the generator version. Give a confidence interval, for example Wilson, when reporting a rate.
 
-- **Definition:** whether the explanation is accurate, grounded in the input, and useful.
-- **Measurement procedure (to be run):** for a sample of incidents, check each claim in the explanation against the input fields. Count unsupported claims. Rate usefulness on a short scale with a fixed rubric.
-- **Also measure:** how often the fallback is used, and why (from `fallback_reason`).
+Note that results describe the rules on the generator's sessions. They are not a statement about real attacks.
+
+### Detection latency
+
+1. Timestamp each event at generation (the generator knows it).
+2. The detection event carries the timestamp of its triggering event. Compare it with the wall-clock time at which `sentinelbot-detect` writes the output.
+3. Separate two parts: time from generation to agent read (dominated by the collection interval) and time from read to detection output (measured by the pipeline).
+4. Report the median and 95th percentile over at least 100 sessions.
+
+### API response time and database impact
+
+1. Start the Compose stack on a host with PostgreSQL seeded with at least 100,000 events (generated with the benchmark's generator and posted through the API).
+2. Use `hey` or an `httpx` script with fixed concurrency (for example 4 workers, 500 requests per endpoint) against `GET /api/v1/incidents`, `GET /api/v1/events` and `POST /api/v1/events` with a batch of 200.
+3. Report p50, p95, p99 and error rate. Record the database size before and after.
+4. Repeat with the same dataset after `VACUUM ANALYZE` to show the effect of statistics.
+
+### Risk score usefulness
+
+1. Ask at least two analysts to label a sample of incidents on a 1 to 5 severity scale, blind to the score.
+2. Compute Spearman's rank correlation between the score and the mean label, and the agreement between analysts (Cohen's kappa).
+3. Report the sample size; a sample under 30 incidents does not support a conclusion.
+
+### AI explanation quality
+
+1. Sample incidents, and for each explanation list every factual claim.
+2. Check each claim against the incident fields. Count unsupported claims per explanation.
+3. Rate usefulness with a fixed three-point rubric. Report the fallback rate from `fallback_reason`.
 
 ## Reporting rules
 
-- Report the dataset, the seed, the hardware and the software version with every number.
-- Report medians and percentiles, not single runs.
-- Separate synthetic results from results on real hosts.
-- Keep failed or surprising runs in the report.
-- Never fill a cell with an estimate. Use **NOT YET MEASURED** until a run exists.
+- Report the dataset, seed, hardware and software versions with every number.
+- Report medians and percentiles over repeats, not single runs.
+- Keep synthetic and real-host results apart.
+- Keep failed or surprising runs in the report. The benchmark finding above is an example.
+- Use **NOT YET MEASURED** until a run exists. Do not estimate.

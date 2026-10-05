@@ -1,0 +1,134 @@
+[
+  {
+    "scenario": "normal",
+    "log_lines": 3,
+    "events": 3,
+    "detections": [],
+    "detection_count": 0,
+    "incidents": [],
+    "agent_seconds": 0.218,
+    "detect_seconds": 0.299
+  },
+  {
+    "scenario": "bruteforce",
+    "log_lines": 8,
+    "events": 8,
+    "detections": [
+      "ssh_bruteforce"
+    ],
+    "detection_count": 1,
+    "incidents": [
+      {
+        "title": "Possible SSH brute-force activity from 198.51.100.23",
+        "severity": "high",
+        "risk_score": 40,
+        "event_count": 1,
+        "rules": [
+          "ssh_bruteforce"
+        ]
+      }
+    ],
+    "agent_seconds": 0.206,
+    "detect_seconds": 0.262
+  },
+  {
+    "scenario": "burst",
+    "log_lines": 35,
+    "events": 35,
+    "detections": [
+      "auth_burst"
+    ],
+    "detection_count": 1,
+    "incidents": [
+      {
+        "title": "Authentication burst on lab-host",
+        "severity": "medium",
+        "risk_score": 20,
+        "event_count": 1,
+        "rules": [
+          "auth_burst"
+        ]
+      }
+    ],
+    "agent_seconds": 0.201,
+    "detect_seconds": 0.251
+  },
+  {
+    "scenario": "root",
+    "log_lines": 1,
+    "events": 1,
+    "detections": [
+      "root_login"
+    ],
+    "detection_count": 1,
+    "incidents": [
+      {
+        "title": "Direct root SSH login from 203.0.113.5",
+        "severity": "high",
+        "risk_score": 50,
+        "event_count": 1,
+        "rules": [
+          "root_login"
+        ]
+      }
+    ],
+    "agent_seconds": 0.194,
+    "detect_seconds": 0.253
+  },
+  {
+    "scenario": "combined",
+    "log_lines": 12,
+    "events": 12,
+    "detections": [
+      "root_login",
+      "ssh_bruteforce"
+    ],
+    "detection_count": 2,
+    "incidents": [
+      {
+        "title": "Possible SSH brute-force activity from 198.51.100.23",
+        "severity": "high",
+        "risk_score": 40,
+        "event_count": 1,
+        "rules": [
+          "ssh_bruteforce"
+        ]
+      },
+      {
+        "title": "Direct root SSH login from 203.0.113.5",
+        "severity": "high",
+        "risk_score": 50,
+        "event_count": 1,
+        "rules": [
+          "root_login"
+        ]
+      }
+    ],
+    "agent_seconds": 0.202,
+    "detect_seconds": 0.259
+  },
+  {
+    "scenario": "campaign",
+    "log_lines": 9,
+    "events": 9,
+    "detections": [
+      "root_login",
+      "ssh_bruteforce"
+    ],
+    "detection_count": 2,
+    "incidents": [
+      {
+        "title": "Possible SSH brute-force activity from 198.51.100.23",
+        "severity": "high",
+        "risk_score": 60,
+        "event_count": 2,
+        "rules": [
+          "ssh_bruteforce",
+          "root_login"
+        ]
+      }
+    ],
+    "agent_seconds": 0.203,
+    "detect_seconds": 0.254
+  }
+]

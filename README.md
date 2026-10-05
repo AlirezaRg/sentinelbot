@@ -98,7 +98,7 @@ All settings are environment variables prefixed with `SENTINEL_`. The most impor
 
 | Variable | Used by | Purpose |
 | --- | --- | --- |
-| `SENTINEL_API_KEY` | API, agent | Service key for agents (at least 32 characters) |
+| `SENTINEL_API_KEY` | API, agent | Service key for agents (at least 24 characters) |
 | `SENTINEL_AUTH_SECRET` | API | Signs login tokens (at least 32 characters) |
 | `SENTINEL_DATABASE_URL` | API | PostgreSQL connection string |
 | `SENTINEL_REDIS_URL` | API | Shared detection state across workers |
@@ -145,13 +145,27 @@ Design and explanation:
 - [Technology decisions](docs/technology-decisions.md)
 - [Simplification report](docs/simplification-report.md)
 
-Evaluation and study material:
+Security:
 
-- [Laboratory experiments](docs/laboratory-experiments.md)
-- [Evaluation methodology](docs/evaluation.md)
+- [Threat model](docs/threat-model.md) (STRIDE per trust boundary)
+- [Security analysis](docs/security-analysis.md) (findings, severity, fixes, verification)
+
+Evaluation:
+
+- [Evaluation](docs/evaluation.md) (measured and not-yet-measured metrics)
+- [Experiments](docs/experiments.md) and [laboratory experiments](docs/laboratory-experiments.md)
+- [Benchmark and lab results](docs/results/)
+- [Limitations](docs/limitations.md) and [future work](docs/future-work.md)
+
+Research framing and study material:
+
+- [Problem statement](docs/problem-statement.md) and [objectives](docs/objectives.md)
+- [Detection engine](docs/detection-engine.md) and [risk scoring](docs/risk-scoring.md)
+- [AI analysis](docs/ai-analysis.md)
+- [Diagrams](docs/diagrams.md)
+- [University presentation](docs/university-presentation.md) and [defense questions](docs/defense-questions.md)
 - [Project audit](docs/project-understanding.md) and [what must be understood](docs/must-understand.md)
-- [Development journey](docs/development-journey.md)
-- [Defense preparation](docs/defense-preparation.md) and [presentation outline](docs/presentation-outline.md)
+- [Development journey](docs/development-journey.md) and [troubleshooting](docs/troubleshooting.md)
 
 ## Laboratory
 
