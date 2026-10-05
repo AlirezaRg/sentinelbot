@@ -2,7 +2,7 @@
 #   docker build -f docker/frontend.Dockerfile -t sentinelbot-frontend .
 # SENTINEL_API_URL is read at build time (it sets where /backend/... is forwarded).
 
-FROM node:22-alpine AS deps
+FROM node:26-alpine AS deps
 WORKDIR /app
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --no-audit --no-fund
@@ -14,7 +14,7 @@ ENV SENTINEL_API_URL=${SENTINEL_API_URL} \
 COPY frontend ./
 RUN npm run build
 
-FROM node:22-alpine
+FROM node:26-alpine
 RUN apk upgrade --no-cache \
  && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 RUN addgroup -S -g 10001 sentinel && adduser -S -u 10001 -G sentinel sentinel
