@@ -14,6 +14,8 @@ RUN pip install --no-cache-dir --prefix=/install \
       /src/agent /src/detection /src/database /src/alerts /src/ai /src/backend
 
 FROM python:3.12-slim
+# Pick up security fixes for the base system packages.
+RUN apt-get update && apt-get upgrade -y --no-install-recommends && rm -rf /var/lib/apt/lists/*
 RUN groupadd --system --gid 10001 sentinel \
  && useradd --system --uid 10001 --gid sentinel --home-dir /app --shell /usr/sbin/nologin sentinel
 COPY --from=build /install /usr/local

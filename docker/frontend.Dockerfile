@@ -15,6 +15,7 @@ COPY frontend ./
 RUN npm run build
 
 FROM node:22-alpine
+RUN apk upgrade --no-cache
 RUN addgroup -S -g 10001 sentinel && adduser -S -u 10001 -G sentinel sentinel
 WORKDIR /app
 ENV NODE_ENV=production \
