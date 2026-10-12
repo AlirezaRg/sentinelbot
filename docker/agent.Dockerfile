@@ -3,12 +3,12 @@
 # Runs as a non-root user. For host-level telemetry, the compose file starts it with the host
 # PID namespace, so process and socket data describe the host rather than the container.
 
-FROM python:3.12-slim AS build
+FROM python:3.14-slim AS build
 WORKDIR /src
 COPY agent /src/agent
 RUN pip install --no-cache-dir --prefix=/install /src/agent
 
-FROM python:3.12-slim
+FROM python:3.14-slim
 # journalctl reads the host's authentication journal (read-only mount, see docker-compose.yml).
 RUN apt-get update \
  && apt-get upgrade -y --no-install-recommends \
