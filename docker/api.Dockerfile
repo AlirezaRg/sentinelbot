@@ -2,7 +2,7 @@
 #   docker build -f docker/api.Dockerfile -t sentinelbot-api .
 # The image runs database migrations, then serves the API as a non-root user.
 
-FROM python:3.12-slim AS build
+FROM python:3.14-slim AS build
 WORKDIR /src
 COPY agent /src/agent
 COPY detection /src/detection
@@ -13,7 +13,7 @@ COPY backend /src/backend
 RUN pip install --no-cache-dir --prefix=/install \
       /src/agent /src/detection /src/database /src/alerts /src/ai /src/backend
 
-FROM python:3.12-slim
+FROM python:3.14-slim
 # Pick up security fixes for the base system packages.
 RUN apt-get update && apt-get upgrade -y --no-install-recommends && rm -rf /var/lib/apt/lists/*
 RUN groupadd --system --gid 10001 sentinel \
