@@ -1,0 +1,26 @@
+{
+  "name": "sentinelbot-video",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SentinelBot explainer video (Remotion). Two renders: English and Persian narration over the same visuals.",
+  "scripts": {
+    "start": "remotion studio",
+    "render:en": "remotion render SentinelBotEN out/sentinelbot-en.mp4",
+    "render:fa": "remotion render SentinelBotFA out/sentinelbot-fa.mp4",
+    "render:all": "npm run render:en && npm run render:fa"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.545",
+    "@remotion/media": "4.0.545",
+    "@remotion/transitions": "4.0.545",
+    "@remotion/google-fonts": "4.0.545",
+    "mediabunny": "^1.14.0",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "remotion": "4.0.545"
+  },
+  "devDependencies": {
+    "@types/react": "19.0.0",
+    "typescript": "5.8.3"
+  }
+}
